@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LGE.SHOP - 가전 전문 쇼핑몰</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = { theme: { extend: { colors: { lg: '#A50034', lgd: '#82002A', ink: '#2B2B2B' } } } };
+</script>
+<style>
+  body { font-family: 'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif; color:#2B2B2B; background:#fff; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:4px; padding:10px 16px; border-radius:6px; font-weight:600; font-size:14px; border:1px solid #d1d5db; background:#fff; color:#2B2B2B; cursor:pointer; transition:.15s; }
+  .btn:hover:not(:disabled) { background:#f3f4f6; }
+  .btn-p { background:#A50034; border-color:#A50034; color:#fff; }
+  .btn-p:hover:not(:disabled) { background:#82002A; }
+  .btn-d { background:#2B2B2B; border-color:#2B2B2B; color:#fff; }
+  .btn-d:hover:not(:disabled) { background:#000; }
+  .btn:disabled { background:#e5e7eb !important; border-color:#e5e7eb !important; color:#9ca3af !important; cursor:not-allowed; }
+  .btn-sm { padding:6px 10px; font-size:12px; }
+  .inp { width:100%; border:1px solid #d1d5db; border-radius:6px; padding:9px 12px; font-size:14px; background:#fff; }
+  .inp:focus { outline:2px solid #A50034; outline-offset:-1px; border-color:#A50034; }
+  .inp:disabled { background:#f3f4f6; color:#9ca3af; }
+  .tab { padding:12px 18px; font-weight:600; font-size:15px; color:#6b7280; border-bottom:3px solid transparent; white-space:nowrap; cursor:pointer; background:none; }
+  .tab-on { color:#A50034; border-bottom-color:#A50034; }
+  .tab:disabled { color:#d1d5db; cursor:not-allowed; }
+  .pcard { border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; cursor:pointer; background:#fff; transition:.15s; }
+  .pcard:hover { box-shadow:0 6px 20px rgba(0,0,0,.1); transform:translateY(-2px); }
+  .pimg { position:relative; height:170px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#f7f7f8,#ececef); }
+  .badge-sold { position:absolute; top:10px; left:10px; background:#2B2B2B; color:#fff; font-size:12px; font-weight:700; padding:4px 10px; border-radius:999px; }
+  .box { border:1px solid #e5e7eb; border-radius:10px; padding:18px; background:#fff; }
+  .st { display:inline-block; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:700; }
+  .toast { padding:12px 16px; border-radius:8px; color:#fff; font-size:14px; box-shadow:0 4px 14px rgba(0,0,0,.25); animation:tin .25s ease; }
+  @keyframes tin { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
+  .ovl { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:60; display:flex; align-items:center; justify-content:center; padding:12px; }
+  .mdl { background:#fff; border-radius:12px; max-width:420px; width:100%; padding:24px; }
+  table.tb { width:100%; font-size:13px; border-collapse:collapse; min-width:560px; }
+  table.tb th, table.tb td { border-bottom:1px solid #e5e7eb; padding:8px 6px; text-align:left; vertical-align:middle; }
+  table.tb th { background:#f9fafb; font-weight:700; }
+  input[type=checkbox], input[type=radio] { accent-color:#A50034; width:16px; height:16px; flex-shrink:0; }
+  .tbl-wrap { overflow-x:auto; }
+  .hint { font-size:12px; color:#6b7280; margin-top:4px; }
+</style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+<!-- ===== 헤더 ===== -->
+<header class="border-b border-gray-200 bg-white sticky top-0 z-40">
+  <div class="max-w-7xl mx-auto px-3 py-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+    <a href="#" onclick="go('home');return false;" class="text-2xl font-black tracking-tight" style="color:#A50034">LGE<span class="text-ink">.SHOP</span></a>
+    <span class="hidden md:inline text-xs text-gray-500">가전 전문 쇼핑몰</span>
+    <nav id="nav" class="ml-auto flex flex-wrap items-center justify-end gap-1 text-sm font-semibold"></nav>
+  </div>
+</header>
+
+<main id="app" class="flex-1 max-w-7xl w-full mx-auto px-3 py-5"></main>
+
+<footer class="bg-gray-100 text-xs text-gray-500 py-5 mt-8">
+  <div class="max-w-7xl mx-auto px-3 flex flex-wrap items-center justify-between gap-2">
+    <span>LGE.SHOP · 블랙박스 테스트용 모의 쇼핑몰입니다. 실제 결제·배송이 이루어지지 않습니다.</span>
+    <button id="btnReset" class="border border-gray-300 rounded px-2 py-1 text-[11px] text-gray-600 bg-white hover:bg-gray-50" onclick="resetAll()">테스트 데이터 초기화</button>
+  </div>
+</footer>
+
+<div id="toasts" class="fixed top-16 right-3 left-3 sm:left-auto sm:w-96 z-50 flex flex-col gap-2 pointer-events-none"></div>
+<div id="modal"></div>
+
+<script>
+/* =====================================================
+   상수 / 시드 데이터
+===================================================== */
+const KEY = 'lgeshop_qa_v2';
+const COUPONS = {
+  welcome: { name: '웰컴 10% 할인 쿠폰 (최대 100,000원 한도)', rate: 0.10, max: 100000 },
+  newbie:  { name: '신규가입 50,000원 정액 쿠폰', fixed: 50000 },
+  vip:     { name: 'VIP 전용 15% 할인 쿠폰 (최대 200,000원 한도)', rate: 0.15, max: 200000, vip: true }
+};
+const STATUSES = ['결제완료', '설치일정확정', '배송·설치중', '설치완료'];
+const FINAL = ['취소완료', '반품완료'];
+
+function seed() {
+  return {
+    products: [
+      { id: 1, rank: 1, cat: 'TV/영상', name: 'LG 올레드 evo 65형 TV', model: 'OLED65C5KNA', price: 3290000, sub: 59900, stock: 12, large: true, icon: '📺' },
+      { id: 2, rank: 2, cat: 'TV/영상', name: 'LG QNED 55형 TV', model: '55QNED85KRA', price: 1190000, sub: 32900, stock: 8, large: true, icon: '🖥️' },
+      { id: 3, rank: 3, cat: 'TV/영상', name: 'LG 스탠바이미 27형', model: '27ART10DKPL', price: 1090000, sub: 0, stock: 1, large: false, icon: '📱' },
+      { id: 4, rank: 4, cat: '주방가전', name: 'LG 디오스 오브제컬렉션 냉장고 870L', model: 'M874GBB451', price: 2890000, sub: 54900, stock: 4, large: true, icon: '🧊' },
+      { id: 5, rank: 5, cat: '주방가전', name: 'LG 디오스 광파오븐 39L', model: 'ML39BSW', price: 390000, sub: 0, stock: 20, large: false, icon: '🍳' },
+      { id: 6, rank: 6, cat: '주방가전', name: 'LG 퓨리케어 냉온정수기', model: 'WD523ACB', price: 899000, sub: 36900, stock: 2, large: false, icon: '💧' },
+      { id: 7, rank: 7, cat: '생활가전', name: 'LG 트롬 오브제컬렉션 세탁기 25kg', model: 'FX25ESR', price: 1690000, sub: 39900, stock: 6, large: true, icon: '🧺' },
+      { id: 8, rank: 8, cat: '생활가전', name: 'LG 퓨리케어 360° 공기청정기', model: 'AS353NS4A', price: 490000, sub: 24900, stock: 15, large: false, icon: '🌬️' },
+      { id: 9, rank: 9, cat: '생활가전', name: 'LG 코드제로 A9S 청소기', model: 'A9S-AI', price: 790000, sub: 0, stock: 1, large: false, icon: '🧹' }
+    ],
+    users: [
+      { id: 'user01', pw: 'test1234!', name: '김일반', role: 'user', grade: 'normal', points: 5000, coupons: ['welcome', 'newbie'], used: [] },
+      { id: 'vip01', pw: 'test1234!', name: '박브이', role: 'user', grade: 'vip', points: 50000, coupons: ['welcome', 'newbie', 'vip'], used: [] },
+      { id: 'admin', pw: 'admin1234!', name: '관리자', role: 'admin', grade: 'admin', points: 0, coupons: [], used: [] }
+    ],
+    carts: {}, opts: {}, orders: [], seq: 1, lineSeq: 1, session: null, hideSold: false
+  };
+}
+function load() {
+  try { const r = localStorage.getItem(KEY); if (r) { const d = JSON.parse(r); if (d && d.products && d.users) return d; } } catch (e) {}
+  return seed();
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+let S = load();
+function newV() { return { view: 'home', cat: '전체', q: '', sort: 'rec', pid: null, tab: 'lump', d: defD(), form: defForm(), next: null, receipt: null, adminTab: 'orders' }; }
+function defD() { return { qty: 1, date: '', term: 4, care: 6, card: false }; }
+function defForm() { return { name: '', phone: '', addr: '', ladder: false, pay: 'ok', review: 'ok' }; }
+let V = newV();
+
+/* =====================================================
+   유틸
+===================================================== */
+const $ = s => document.querySelector(s);
+const won = n => Number(n).toLocaleString('ko-KR') + '원';
+const P = id => S.products.find(p => p.id === Number(id));
+const U = () => S.users.find(u => u.id === S.session) || null;
+const cart = () => { const k = S.session || 'guest'; return S.carts[k] || (S.carts[k] = []); };
+const optv = () => { const k = S.session || 'guest'; return S.opts[k] || (S.opts[k] = { coupon: '', points: 0 }); };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const gradeLabel = u => u.role === 'admin' ? '관리자' : (u.grade === 'vip' ? 'VIP' : '일반');
+function dstr(off) {
+  const d = new Date(); d.setDate(d.getDate() + off);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function toast(msg, type) {
+  const el = document.createElement('div');
+  el.className = 'toast pointer-events-auto';
+  el.style.background = type === 'err' ? '#A50034' : type === 'ok' ? '#15803d' : type === 'warn' ? '#b45309' : '#2B2B2B';
+  el.setAttribute('role', 'alert');
+  el.textContent = (type === 'err' ? '⛔ ' : type === 'ok' ? '✅ ' : type === 'warn' ? '⚠️ ' : 'ℹ️ ') + msg;
+  $('#toasts').appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = '.3s'; setTimeout(() => el.remove(), 300); }, 3200);
+}
+function modal(title, msg, type) {
+  $('#modal').innerHTML = `<div class="ovl" onclick="if(event.target===this)closeModal()"><div class="mdl" role="dialog">
+    <div class="text-lg font-bold mb-2" style="color:${type === 'err' ? '#A50034' : '#2B2B2B'}">${type === 'err' ? '⛔ ' : ''}${esc(title)}</div>
+    <p class="text-sm text-gray-700 mb-5">${esc(msg)}</p>
+    <button class="btn btn-p w-full" onclick="closeModal()">확인</button></div></div>`;
+}
+function closeModal() { $('#modal').innerHTML = ''; }
+function statusClass(s) {
+  return { '결제완료': 'bg-blue-100 text-blue-800', '설치일정확정': 'bg-indigo-100 text-indigo-800', '배송·설치중': 'bg-amber-100 text-amber-800', '설치완료': 'bg-green-100 text-green-800', '취소완료': 'bg-gray-200 text-gray-600', '반품완료': 'bg-purple-100 text-purple-800' }[s] || 'bg-gray-100';
+}
+
+/* =====================================================
+   내비게이션 / 접근 제어
+===================================================== */
+function needLogin(v, pid) {
+  V.next = { v, pid: pid == null ? null : pid };
+  toast('로그인이 필요한 서비스입니다.', 'warn');
+  V.view = 'login'; window.scrollTo(0, 0); render();
+}
+function go(view, pid) {
+  if ((view === 'my' || view === 'checkout') && !U()) { needLogin(view); return; }
+  if (view === 'admin') {
+    if (!U()) { needLogin('admin'); return; }
+    if (U().role !== 'admin') { toast('관리자만 접근할 수 있는 페이지입니다.', 'err'); view = 'home'; }
+  }
+  V.view = view;
+  if (pid != null) V.pid = pid;
+  if (view === 'detail') { V.tab = 'lump'; V.d = defD(); }
+  window.scrollTo(0, 0);
+  render();
+}
+function navHTML() {
+  const u = U();
+  const n = cart().reduce((s, l) => s + l.qty, 0);
+  const cartBtn = `<button class="btn btn-sm" id="navCart" onclick="go('cart')">🛒 장바구니 (<span id="cnt">${n}</span>)</button>`;
+  if (!u) return cartBtn + `<button class="btn btn-sm" id="navLogin" onclick="go('login')">로그인</button><button class="btn btn-sm btn-p" id="navSignup" onclick="go('signup')">회원가입</button>`;
+  return `<span class="px-2 text-sm" id="who">${esc(u.name)}님 (${gradeLabel(u)})</span>` + cartBtn +
+    `<button class="btn btn-sm" id="navMy" onclick="go('my')">마이페이지</button>` +
+    (u.role === 'admin' ? `<button class="btn btn-sm btn-d" id="navAdmin" onclick="go('admin')">관리자 페이지</button>` : '') +
+    `<button class="btn btn-sm" id="navLogout" onclick="logout()">로그아웃</button>`;
+}
+function render() {
+  const u = U();
+  if ((V.view === 'my' || V.view === 'checkout' || V.view === 'receipt') && !u) V.view = 'home';
+  if (V.view === 'admin' && (!u || u.role !== 'admin')) V.view = 'home';
+  $('#nav').innerHTML = navHTML();
+  if (V.view === 'cart' || V.view === 'checkout') fixOpt();
+  const views = { home: viewHome, detail: viewDetail, cart: viewCart, checkout: viewCheckout, receipt: viewReceipt, my: viewMy, login: viewLogin, signup: viewSignup, admin: viewAdmin };
+  $('#app').innerHTML = (views[V.view] || viewHome)();
+  if (V.view === 'detail') renderCalc();
+}
+function resetAll() {
+  try { localStorage.removeItem(KEY); } catch (e) {}
+  S = seed(); V = newV(); closeModal(); save(); render();
+  toast('테스트 데이터가 초기화되었습니다.', 'ok');
+}
+window.addEventListener('storage', e => { if (e.key === KEY) { S = load(); render(); } });
+
+/* =====================================================
+   REQ-000 인증 / 회원
+===================================================== */
+function validateId(id) {
+  if (!id) return '아이디를 입력해 주세요.';
+  if (/[A-Z]/.test(id)) return '아이디에 대문자는 사용할 수 없습니다. 영문 소문자와 숫자만 입력해 주세요.';
+  if (/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(id)) return '아이디에 한글은 사용할 수 없습니다. 영문 소문자와 숫자만 입력해 주세요.';
+  if (/[^a-z0-9]/.test(id)) return '아이디에 특수문자·공백은 사용할 수 없습니다. 영문 소문자와 숫자만 입력해 주세요.';
+  if (id.length < 4) return `아이디는 4자 이상이어야 합니다. (현재 ${id.length}자)`;
+  if (id.length > 12) return `아이디는 12자 이하여야 합니다. (현재 ${id.length}자)`;
+  if (S.users.some(u => u.id === id)) return '이미 사용 중인 아이디입니다.';
+  return '';
+}
+function validatePw(pw) {
+  if (!pw) return '비밀번호를 입력해 주세요.';
+  if (pw.length < 8) return `비밀번호는 8자 이상이어야 합니다. (현재 ${pw.length}자)`;
+  if (!/[A-Za-z]/.test(pw)) return '비밀번호에 영문자를 1개 이상 포함해야 합니다.';
+  if (!/\d/.test(pw)) return '비밀번호에 숫자를 1개 이상 포함해야 합니다.';
+  if (!/[!-\/:-@\[-`{-~]/.test(pw)) return '비밀번호에 특수문자를 1개 이상 포함해야 합니다.';
+  return '';
+}
+function viewSignup() {
+  return `<div class="max-w-md mx-auto">
+  <h1 class="text-2xl font-black mb-4">회원가입</h1>
+  <form class="box space-y-4" onsubmit="return doSignup(event)" novalidate>
+    <div><label class="text-sm font-bold">아이디</label>
+      <div class="flex gap-2 mt-1"><input id="sId" class="inp" autocomplete="off" placeholder="영문 소문자·숫자 4~12자"><button type="button" class="btn btn-sm whitespace-nowrap" onclick="checkId()">중복확인</button></div>
+      <div class="hint">영문 소문자와 숫자만 사용, 4~12자</div></div>
+    <div><label class="text-sm font-bold">비밀번호</label>
+      <input id="sPw" type="password" class="inp mt-1" autocomplete="new-password" placeholder="8자 이상">
+      <div class="hint">8자 이상, 영문 + 숫자 + 특수문자 각 1개 이상 포함</div></div>
+    <div><label class="text-sm font-bold">비밀번호 확인</label>
+      <input id="sPw2" type="password" class="inp mt-1" autocomplete="new-password" placeholder="비밀번호 재입력"></div>
+    <div><label class="text-sm font-bold">이름</label>
+      <input id="sName" class="inp mt-1" autocomplete="off" placeholder="2~10자"></div>
+    <button class="btn btn-p w-full py-3" id="btnSignup" type="submit">가입하기</button>
+    <div class="text-xs text-gray-500">가입 시 일반 회원 등급, 축하 포인트 5,000P, 웰컴·신규가입 쿠폰이 자동 지급됩니다.</div>
+    <div class="text-sm text-center">이미 계정이 있으신가요? <a href="#" class="font-bold underline" style="color:#A50034" onclick="go('login');return false;">로그인</a></div>
+  </form></div>`;
+}
+function checkId() {
+  const m = validateId($('#sId').value);
+  if (m) toast(m, 'err'); else toast('사용 가능한 아이디입니다.', 'ok');
+}
+function doSignup(e) {
+  e.preventDefault();
+  const id = $('#sId').value, pw = $('#sPw').value, pw2 = $('#sPw2').value, nm = $('#sName').value.trim();
+  let m = validateId(id);
+  if (m) { toast(m, 'err'); $('#sId').focus(); return false; }
+  m = validatePw(pw);
+  if (m) { toast(m, 'err'); $('#sPw').focus(); return false; }
+  if (pw !== pw2) { toast('비밀번호가 일치하지 않습니다. 비밀번호 확인을 다시 입력해 주세요.', 'err'); $('#sPw2').focus(); return false; }
+  const nl = [...nm].length;
+  if (nl < 2 || nl > 10) { toast(`이름은 2자 이상 10자 이하로 입력해 주세요. (현재 ${nl}자)`, 'err'); $('#sName').focus(); return false; }
+  S.users.push({ id, pw, name: nm, role: 'user', grade: 'normal', points: 5000, coupons: ['welcome', 'newbie'], used: [] });
+  save();
+  V.view = 'login'; V.loginId = id; render();
+  toast('회원가입이 완료되었습니다. 가입 축하 포인트 5,000P와 쿠폰 2종이 지급되었습니다. 로그인해 주세요.', 'ok');
+  return false;
+}
+function viewLogin() {
+  const pre = V.loginId || ''; V.loginId = '';
+  return `<div class="max-w-md mx-auto">
+  <h1 class="text-2xl font-black mb-4">로그인</h1>
+  <form class="box space-y-4" onsubmit="return doLogin(event)" novalidate>
+    <div><label class="text-sm font-bold">아이디</label><input id="lId" class="inp mt-1" autocomplete="username" value="${esc(pre)}" placeholder="아이디"></div>
+    <div><label class="text-sm font-bold">비밀번호</label><input id="lPw" type="password" class="inp mt-1" autocomplete="current-password" placeholder="비밀번호"></div>
+    <button class="btn btn-p w-full py-3" id="btnLogin" type="submit">로그인</button>
+    <div class="text-sm text-center">계정이 없으신가요? <a href="#" class="font-bold underline" style="color:#A50034" onclick="go('signup');return false;">회원가입</a></div>
+  </form>
+  <div class="box mt-4 bg-gray-50">
+    <div class="text-sm font-bold mb-2">🧪 테스트 계정 원클릭 입력</div>
+    <div class="grid gap-2">
+      <button type="button" class="btn btn-sm justify-between" onclick="fillLogin('user01','test1234!')"><span>일반 회원 · user01</span><span class="text-gray-500 font-normal">보유 5,000P</span></button>
+      <button type="button" class="btn btn-sm justify-between" onclick="fillLogin('vip01','test1234!')"><span>VIP 회원 · vip01</span><span class="text-gray-500 font-normal">50,000P · VIP 쿠폰</span></button>
+      <button type="button" class="btn btn-sm justify-between" onclick="fillLogin('admin','admin1234!')"><span>관리자 · admin</span><span class="text-gray-500 font-normal">관리자 페이지</span></button>
+    </div>
+    <div class="hint">버튼을 누르면 아이디/비밀번호만 입력되며, [로그인] 버튼을 눌러야 로그인됩니다.</div>
+  </div></div>`;
+}
+function fillLogin(id, pw) { $('#lId').value = id; $('#lPw').value = pw; }
+function sameLine(a, b) {
+  return a.pid === b.pid && a.type === b.type && (a.type === 'lump' ? a.date === b.date : (a.term === b.term && a.care === b.care && a.card === b.card));
+}
+function mergeGuest(u) {
+  const g = S.carts.guest || [];
+  if (!g.length) return false;
+  const uc = S.carts[u.id] || (S.carts[u.id] = []);
+  g.forEach(l => {
+    const ex = uc.find(x => sameLine(x, l));
+    if (ex) { ex.qty = l.type === 'lump' ? Math.min(3, ex.qty + l.qty, Math.max(1, P(l.pid).stock)) : 1; }
+    else uc.push(l);
+  });
+  S.carts.guest = [];
+  return true;
+}
+function doLogin(e) {
+  e.preventDefault();
+  const id = $('#lId').value.trim(), pw = $('#lPw').value;
+  if (!id) { toast('아이디를 입력해 주세요.', 'err'); $('#lId').focus(); return false; }
+  if (!pw) { toast('비밀번호를 입력해 주세요.', 'err'); $('#lPw').focus(); return false; }
+  const u = S.users.find(x => x.id === id && x.pw === pw);
+  if (!u) { toast('아이디 또는 비밀번호가 일치하지 않습니다.', 'err'); return false; }
+  S.session = u.id;
+  const merged = mergeGuest(u);
+  save();
+  let nx = V.next; V.next = null;
+  V.form = defForm();
+  if (nx && nx.v === 'checkout' && !cart().some(l => l.sel)) nx = { v: 'cart' };
+  if (nx && nx.v === 'admin' && u.role !== 'admin') nx = null;
+  toast(u.name + '님, 환영합니다.' + (merged ? ' 비로그인 상태에서 담은 상품이 장바구니에 합쳐졌습니다.' : ''), 'ok');
+  go(nx ? nx.v : 'home', nx ? nx.pid : null);
+  return false;
+}
+function logout() {
+  S.session = null; save();
+  V = Object.assign(newV(), { view: 'home' });
+  render(); toast('로그아웃되었습니다.', 'info');
+}
+
+/* =====================================================
+   검증 / 계산
+===================================================== */
+function validateDate(v) {
+  if (!v) return '희망 설치일을 선택해 주세요.';
+  if (v < dstr(2)) return '오늘 및 내일(D+1)은 설치일로 선택할 수 없습니다. 모레(D+2)부터 선택해 주세요.';
+  if (v > dstr(30)) return '희망 설치일은 오늘로부터 최대 30일 이내만 선택할 수 있습니다.';
+  return '';
+}
+function validateQty(raw, p) {
+  const s = String(raw).trim();
+  if (s === '') return { ok: false, msg: '구매 수량을 입력해 주세요.' };
+  const n = Number(s);
+  if (!Number.isInteger(n)) return { ok: false, msg: '수량은 정수로 입력해 주세요.' };
+  if (n < 1) return { ok: false, msg: '구매 수량은 최소 1개 이상이어야 합니다.' };
+  if (n > 3) return { ok: false, msg: '구매 수량은 최대 3개까지 가능합니다.' };
+  if (n > p.stock) return { ok: false, msg: `재고가 부족합니다. 현재 잔여 재고는 ${p.stock}개입니다.` };
+  return { ok: true, n };
+}
+function monthly(p, term, care, card) {
+  const base = p.sub;
+  const promo = term === 4 ? Math.round(base * 0.5) : 0;
+  const careFee = care === 4 ? 3000 : 0;
+  const cardDisc = card ? 20000 : 0;
+  const raw = base - promo + careFee - cardDisc;
+  return { base, promo, careFee, cardDisc, raw, final: Math.max(0, raw) };
+}
+function lineUnit(l) { const p = P(l.pid); return l.type === 'lump' ? p.price : monthly(p, l.term, l.care, l.card).final; }
+function lineDesc(l) {
+  if (l.type === 'lump') return `일시불 · 설치희망일 ${l.date}`;
+  return `구독 · ${l.term}년 약정 · 케어십 ${l.care}개월 주기${l.card ? ' · 제휴카드 할인' : ''}`;
+}
+function couponAmt(key, base) {
+  const c = COUPONS[key];
+  if (c.fixed) return Math.min(c.fixed, base);
+  return Math.min(Math.floor(base * c.rate), c.max);
+}
+function calc(coupon, pts) {
+  const u = U();
+  const L = cart().filter(l => l.sel);
+  const lump = L.filter(l => l.type === 'lump');
+  const sub = L.filter(l => l.type === 'sub');
+  const subtotal = lump.reduce((s, l) => s + P(l.pid).price * l.qty, 0);
+  const models = new Set(lump.map(l => l.pid));
+  const bundle = models.size >= 2 ? Math.floor(subtotal * 0.03) : 0;
+  const afterB = subtotal - bundle;
+  let cAmt = 0, cErr = '';
+  if (coupon) {
+    const c = COUPONS[coupon];
+    if (!c) cErr = '존재하지 않는 쿠폰입니다.';
+    else if (!u) cErr = '로그인 후 쿠폰을 사용할 수 있습니다.';
+    else if (!u.coupons.includes(coupon)) cErr = '보유하지 않은 쿠폰입니다.';
+    else if (c.vip && u.grade !== 'vip') cErr = 'VIP 전용 쿠폰은 VIP 회원만 사용할 수 있습니다.';
+    else if (u.used.includes(coupon)) cErr = '이미 사용한 쿠폰입니다.';
+    else if (!lump.length) cErr = '구독 상품만 담은 경우 일시불 전용 쿠폰을 적용할 수 없습니다.';
+    else cAmt = couponAmt(coupon, afterB);
+  }
+  const afterC = afterB - cAmt;
+  const payable = afterC - pts;
+  const monthlySum = sub.reduce((s, l) => s + lineUnit(l), 0);
+  const large = L.some(l => P(l.pid).large);
+  return { L, lump, sub, subtotal, models: models.size, bundle, afterB, cAmt, cErr, afterC, payable, monthlySum, large };
+}
+function fixOpt() {
+  const o = optv(), u = U();
+  let c = calc(o.coupon, 0);
+  if (c.cErr) { toast(c.cErr + ' 쿠폰 선택이 해제되었습니다.', 'warn'); o.coupon = ''; c = calc('', 0); }
+  if (o.points > 0) {
+    const maxp = Math.min(u ? u.points : 0, Math.floor(c.afterC / 100) * 100);
+    if (o.points > maxp) { toast('주문 구성/보유 포인트 변경으로 사용 포인트가 조정되었습니다.', 'warn'); o.points = Math.max(0, maxp); }
+  }
+  save();
+}
+
+/* =====================================================
+   REQ-001 메인 / 필터
+===================================================== */
+function filtered() {
+  let l = S.products.slice();
+  if (V.cat !== '전체') l = l.filter(p => p.cat === V.cat);
+  const q = V.q.trim().toLowerCase();
+  if (q) l = l.filter(p => (p.name + ' ' + p.model).toLowerCase().includes(q));
+  if (S.hideSold) l = l.filter(p => p.stock > 0);
+  if (V.sort === 'low') l.sort((a, b) => a.price - b.price);
+  else if (V.sort === 'high') l.sort((a, b) => b.price - a.price);
+  else l.sort((a, b) => a.rank - b.rank);
+  return l;
+}
+function setCat(c) { V.cat = c; render(); }
+function setSort(v) { V.sort = v; render(); }
+function setHide(b) { S.hideSold = b; save(); render(); }
+function doSearch(e) {
+  e.preventDefault();
+  const v = $('#q').value;
+  if (!v.trim()) { V.q = ''; toast('검색어를 입력해 주세요. 전체 목록을 표시합니다.', 'warn'); }
+  else V.q = v.trim();
+  render();
+  return false;
+}
+function card(p) {
+  const sold = p.stock <= 0;
+  return `<div class="pcard" data-pid="${p.id}" onclick="go('detail',${p.id})">
+    <div class="pimg"><span class="text-7xl ${sold ? 'opacity-40' : ''}">${p.icon}</span>${sold ? '<span class="badge-sold">일시품절</span>' : ''}</div>
+    <div class="p-4">
+      <div class="text-xs text-gray-500 mb-1">${p.cat}${p.large ? ' · 대형가전' : ''}</div>
+      <div class="font-bold leading-snug">${esc(p.name)}</div>
+      <div class="text-xs text-gray-500 mb-2">${esc(p.model)}</div>
+      <div class="text-lg font-black">${won(p.price)}</div>
+      <div class="text-sm" style="color:#A50034">${p.sub > 0 ? '구독 월 ' + won(p.sub) + '~' : '<span class="text-gray-500">일시불 전용</span>'}</div>
+      <div class="text-xs mt-2 ${sold ? 'text-red-700 font-bold' : p.stock <= 2 ? 'text-amber-700 font-bold' : 'text-gray-500'}">${sold ? '재고 0개' : '재고 ' + p.stock + '개' + (p.stock <= 2 ? ' (품절 임박)' : '')}</div>
+    </div></div>`;
+}
+function viewHome() {
+  const l = filtered();
+  const cats = ['전체', 'TV/영상', '주방가전', '생활가전'];
+  return `
+  <div class="flex gap-1 overflow-x-auto border-b border-gray-200 mb-4">
+    ${cats.map(c => `<button class="tab ${V.cat === c ? 'tab-on' : ''}" onclick="setCat('${c}')">${c}</button>`).join('')}
+  </div>
+  <div class="flex flex-col md:flex-row md:items-center gap-3 mb-4">
+    <form class="flex flex-1 gap-2" onsubmit="return doSearch(event)">
+      <input id="q" class="inp" type="text" placeholder="상품명 또는 모델명 검색" value="${esc(V.q)}">
+      <button class="btn btn-p" type="submit">검색</button>
+    </form>
+    <select class="inp md:w-44" onchange="setSort(this.value)">
+      <option value="rec" ${V.sort === 'rec' ? 'selected' : ''}>추천순</option>
+      <option value="low" ${V.sort === 'low' ? 'selected' : ''}>낮은 가격순</option>
+      <option value="high" ${V.sort === 'high' ? 'selected' : ''}>높은 가격순</option>
+    </select>
+    <label class="flex items-center gap-2 text-sm font-semibold whitespace-nowrap cursor-pointer"><input type="checkbox" id="hideSold" ${S.hideSold ? 'checked' : ''} onchange="setHide(this.checked)"> 품절 상품 제외</label>
+  </div>
+  <p class="text-sm text-gray-500 mb-3">총 <b>${l.length}</b>개 상품${V.q.trim() ? ` · 검색어 "${esc(V.q)}"` : ''}</p>
+  ${l.length ? `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">${l.map(card).join('')}</div>`
+    : `<div class="text-center py-24 text-gray-500"><div class="text-5xl mb-3">🔍</div><div class="text-lg font-semibold">검색 결과가 없습니다</div></div>`}`;
+}
+
+/* =====================================================
+   REQ-002 / 003 상품 상세
+===================================================== */
+function viewDetail() {
+  const p = P(V.pid);
+  if (!p) { V.view = 'home'; return viewHome(); }
+  if (V.tab === 'sub' && p.sub <= 0) V.tab = 'lump';
+  const sold = p.stock <= 0;
+  const d = V.d;
+  const guestNote = U() ? '' : '<div class="hint">※ 비로그인 상태에서는 장바구니 담기까지만 가능하며, 바로 구매/구독 신청은 로그인이 필요합니다.</div>';
+  const lumpPanel = `
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-bold mb-1">희망 설치일</label>
+        <input id="inDate" type="date" class="inp" min="${dstr(2)}" max="${dstr(30)}" value="${d.date}" onchange="chkDate(this)" ${sold ? 'disabled' : ''}>
+        <p class="hint">오늘·내일(D+1)은 선택 불가 · 모레(D+2)부터 최대 30일 이내 (${dstr(2)} ~ ${dstr(30)})</p>
+      </div>
+      <div>
+        <label class="block text-sm font-bold mb-1">구매 수량 <span class="font-normal text-gray-500">(최소 1 ~ 최대 3개, 재고 ${p.stock}개)</span></label>
+        <div class="flex items-center gap-2">
+          <button class="btn btn-sm" onclick="qtyStep(-1)" ${sold ? 'disabled' : ''}>－</button>
+          <input id="inQty" type="text" inputmode="numeric" class="inp text-center" style="max-width:90px" value="${d.qty}" onchange="chkQty(this)" ${sold ? 'disabled' : ''}>
+          <button class="btn btn-sm" onclick="qtyStep(1)" ${sold ? 'disabled' : ''}>＋</button>
+        </div>
+      </div>
+      <div class="flex justify-between items-center border-t pt-3"><span class="font-semibold">합계</span><span id="prev" class="text-2xl font-black" style="color:#A50034">${won(p.price * d.qty)}</span></div>
+      <div class="grid grid-cols-2 gap-2">
+        <button class="btn" id="btnCartLump" onclick="addCart('lump',false)" ${sold ? 'disabled' : ''}>🛒 장바구니 담기</button>
+        <button class="btn btn-p" id="btnBuyLump" onclick="addCart('lump',true)" ${sold ? 'disabled' : ''}>${sold ? '일시품절' : '바로 구매'}</button>
+      </div>${guestNote}
+    </div>`;
+  const subPanel = `
+    <div class="space-y-4">
+      <div>
+        <div class="text-sm font-bold mb-2">계약 기간</div>
+        <div class="grid grid-cols-3 gap-2">
+          ${[4, 5, 6].map(t => `<label class="border rounded-lg p-3 text-center cursor-pointer text-sm ${d.term === t ? 'bg-red-50 font-bold' : ''}" style="${d.term === t ? 'border-color:#A50034' : ''}"><input type="radio" name="term" value="${t}" ${d.term === t ? 'checked' : ''} onchange="setSub('term',${t})"> ${t}년${t === 4 ? '<div class="text-xs" style="color:#A50034">50% 프로모션</div>' : ''}</label>`).join('')}
+        </div>
+      </div>
+      <div>
+        <div class="text-sm font-bold mb-2">케어십 방문 주기</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <label class="border rounded-lg p-3 text-sm cursor-pointer ${d.care === 6 ? 'bg-red-50 font-bold' : ''}" style="${d.care === 6 ? 'border-color:#A50034' : ''}"><input type="radio" name="care" ${d.care === 6 ? 'checked' : ''} onchange="setSub('care',6)"> 6개월 주기 (+0원)</label>
+          <label class="border rounded-lg p-3 text-sm cursor-pointer ${d.care === 4 ? 'bg-red-50 font-bold' : ''}" style="${d.care === 4 ? 'border-color:#A50034' : ''}"><input type="radio" name="care" ${d.care === 4 ? 'checked' : ''} onchange="setSub('care',4)"> 4개월 주기 (+3,000원)</label>
+        </div>
+      </div>
+      <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer"><input type="checkbox" id="inCard" ${d.card ? 'checked' : ''} onchange="setSub('card',this.checked)"> 제휴카드 할인 (월 -20,000원)</label>
+      <div id="calc" class="rounded-lg bg-gray-50 border p-4 text-sm"></div>
+      <div class="grid grid-cols-2 gap-2">
+        <button class="btn" id="btnCartSub" onclick="addCart('sub',false)" ${sold ? 'disabled' : ''}>🛒 장바구니 담기</button>
+        <button class="btn btn-p" id="btnBuySub" onclick="addCart('sub',true)" ${sold ? 'disabled' : ''}>${sold ? '일시품절' : '구독 신청'}</button>
+      </div>${guestNote}
+    </div>`;
+  return `
+  <button class="text-sm text-gray-500 mb-3 hover:underline" onclick="go('home')">← 목록으로</button>
+  <div class="grid md:grid-cols-2 gap-6">
+    <div class="rounded-xl flex items-center justify-center relative" style="background:linear-gradient(135deg,#f7f7f8,#e8e8ec);min-height:280px">
+      <span style="font-size:130px" class="${sold ? 'opacity-40' : ''}">${p.icon}</span>
+      ${sold ? '<span class="badge-sold">일시품절</span>' : ''}
+    </div>
+    <div>
+      <div class="text-xs text-gray-500">${p.cat}${p.large ? ' · 대형가전 (설치 공간 확인 필요)' : ''}</div>
+      <h1 class="text-2xl font-black mt-1">${esc(p.name)}</h1>
+      <div class="text-sm text-gray-500 mb-3">모델명 ${esc(p.model)}</div>
+      <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-1">
+        <span class="text-2xl font-black">${won(p.price)}</span>
+        <span class="text-sm" style="color:#A50034">${p.sub > 0 ? '기본 월 구독료 ' + won(p.sub) : '일시불 전용 상품'}</span>
+      </div>
+      <div id="stockInfo" class="text-sm mb-4 ${sold ? 'text-red-700 font-bold' : 'text-gray-600'}">${sold ? '현재 일시품절 상품입니다.' : '잔여 재고 ' + p.stock + '개'}</div>
+      <div class="border-b flex mb-4">
+        <button class="tab ${V.tab === 'lump' ? 'tab-on' : ''}" onclick="setTab('lump')">일시불 구매</button>
+        <button class="tab ${V.tab === 'sub' ? 'tab-on' : ''}" onclick="setTab('sub')" ${p.sub <= 0 ? 'disabled title="일시불 전용 상품입니다"' : ''}>가전 구독${p.sub <= 0 ? ' (불가)' : ''}</button>
+      </div>
+      ${V.tab === 'lump' ? lumpPanel : subPanel}
+    </div>
+  </div>`;
+}
+function setTab(t) {
+  const p = P(V.pid);
+  if (t === 'sub' && p.sub <= 0) { toast('이 상품은 일시불 전용 상품이라 구독할 수 없습니다.', 'warn'); return; }
+  if (V.tab === t) return;
+  V.tab = t; V.d = defD(); render();
+}
+function chkDate(el) {
+  const v = el.value;
+  if (!v) { V.d.date = ''; return; }
+  const m = validateDate(v);
+  if (m) { toast(m, 'err'); el.value = ''; V.d.date = ''; return; }
+  V.d.date = v;
+}
+function chkQty(el) {
+  const p = P(V.pid);
+  const r = validateQty(el.value, p);
+  if (!r.ok) { toast(r.msg, 'err'); el.value = V.d.qty; return; }
+  V.d.qty = r.n; updPrev();
+}
+function qtyStep(dv) {
+  const el = $('#inQty');
+  const cur = parseInt(el.value, 10);
+  el.value = (isNaN(cur) ? V.d.qty : cur) + dv;
+  chkQty(el);
+}
+function updPrev() { const e = $('#prev'); if (e) e.textContent = won(P(V.pid).price * V.d.qty); }
+function setSub(k, v) { V.d[k] = v; render(); }
+function renderCalc() {
+  const el = $('#calc'); if (!el) return;
+  const p = P(V.pid), d = V.d, m = monthly(p, d.term, d.care, d.card);
+  el.innerHTML = `
+    <div class="flex justify-between"><span>기본 월 구독료</span><span>${won(m.base)}</span></div>
+    <div class="flex justify-between"><span>4년 약정 프로모션 (50%)</span><span>${m.promo ? '-' + won(m.promo) : '미적용'}</span></div>
+    <div class="flex justify-between"><span>케어십 ${d.care}개월 주기</span><span>${m.careFee ? '+' + won(m.careFee) : '+0원'}</span></div>
+    <div class="flex justify-between"><span>제휴카드 할인</span><span>${m.cardDisc ? '-' + won(m.cardDisc) : '미적용'}</span></div>
+    <div class="flex justify-between border-t mt-2 pt-2 items-baseline"><b>최종 월 요금</b><b id="finalMonthly" class="text-2xl" style="color:#A50034">${won(m.final)}</b></div>
+    ${m.raw < 0 ? '<div class="text-xs text-amber-700 mt-1">※ 할인 합계가 요금을 초과하여 0원으로 고정되었습니다.</div>' : ''}
+    <div class="text-xs text-gray-500 mt-1">${d.term}년(${d.term * 12}개월) 약정 기준</div>`;
+}
+function addCart(mode, buyNow) {
+  const p = P(V.pid);
+  if (!p || p.stock <= 0) { toast('일시품절 상품은 구매할 수 없습니다.', 'err'); render(); return; }
+  if (buyNow && !U()) { needLogin('detail', p.id); return; }
+  const cl = cart();
+  let line;
+  if (mode === 'lump') {
+    const date = $('#inDate').value;
+    const dm = validateDate(date);
+    if (dm) { toast(dm, 'err'); if (date) { $('#inDate').value = ''; V.d.date = ''; } return; }
+    const r = validateQty($('#inQty').value, p);
+    if (!r.ok) { toast(r.msg, 'err'); $('#inQty').value = V.d.qty; return; }
+    const cand = { pid: p.id, type: 'lump', date };
+    const ex = cl.find(l => sameLine(l, cand));
+    if (ex) {
+      const r2 = validateQty(String(ex.qty + r.n), p);
+      if (!r2.ok) { toast('장바구니에 이미 ' + ex.qty + '개가 담겨 있습니다. ' + r2.msg, 'err'); return; }
+      ex.qty = r2.n; line = ex;
+    } else {
+      line = { id: 'L' + (S.lineSeq++), pid: p.id, type: 'lump', qty: r.n, date, sel: true };
+      cl.push(line);
+    }
+  } else {
+    const d = V.d;
+    const cand = { pid: p.id, type: 'sub', term: d.term, care: d.care, card: d.card };
+    const ex = cl.find(l => sameLine(l, cand));
+    if (ex) { line = ex; if (!buyNow) { toast('동일한 구독 옵션이 이미 장바구니에 있습니다.', 'warn'); return; } }
+    else { line = { id: 'L' + (S.lineSeq++), pid: p.id, type: 'sub', qty: 1, term: d.term, care: d.care, card: d.card, sel: true }; cl.push(line); }
+  }
+  if (buyNow) { cl.forEach(l => l.sel = (l.id === line.id)); save(); go('checkout'); return; }
+  save(); render();
+  toast('장바구니에 담았습니다.', 'ok');
+}
+
+/* =====================================================
+   REQ-004 장바구니
+===================================================== */
+function viewCart() {
+  const cl = cart(), u = U();
+  if (!cl.length) {
+    return `<h1 class="text-2xl font-black mb-4">장바구니</h1><div class="box text-center py-20 text-gray-500"><div class="text-5xl mb-3">🛒</div><div class="font-semibold mb-4">장바구니가 비어 있습니다.</div><button class="btn btn-p" onclick="go('home')">쇼핑 계속하기</button></div>`;
+  }
+  const o = optv();
+  const c = calc(o.coupon, o.points);
+  const allSel = cl.every(l => l.sel);
+  const rows = cl.map(l => {
+    const p = P(l.pid), sold = p.stock <= 0;
+    return `<div class="flex gap-3 py-4 border-b items-start" data-line="${l.id}">
+      <input type="checkbox" class="mt-2" ${l.sel ? 'checked' : ''} onchange="cartSel('${l.id}',this.checked)">
+      <div class="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center text-3xl shrink-0">${p.icon}</div>
+      <div class="flex-1 min-w-0">
+        <div class="font-bold text-sm">${esc(p.name)} ${p.large ? '<span class="st bg-gray-100 text-gray-600">대형</span>' : ''} ${sold ? '<span class="st bg-red-100 text-red-700">일시품절</span>' : ''}</div>
+        <div class="text-xs text-gray-500">${esc(p.model)} · ${lineDesc(l)}</div>
+        <div class="flex flex-wrap items-center gap-3 mt-2">
+          ${l.type === 'lump' ? `<div class="flex items-center gap-1">
+            <button class="btn btn-sm" onclick="cartSet('${l.id}',${l.qty - 1})">－</button>
+            <input type="text" inputmode="numeric" class="inp text-center" style="width:56px;padding:5px" value="${l.qty}" onchange="cartSet('${l.id}',this.value)">
+            <button class="btn btn-sm" onclick="cartSet('${l.id}',${l.qty + 1})">＋</button></div>
+            <span class="font-bold">${won(p.price * l.qty)}</span>`
+          : `<span class="text-sm">구독 1건</span><span class="font-bold" style="color:#A50034">월 ${won(lineUnit(l))}</span>`}
+          <button class="text-xs text-gray-500 underline ml-auto" onclick="cartDel('${l.id}')">삭제</button>
+        </div>
+      </div></div>`;
+  }).join('');
+  const couponOpts = Object.keys(COUPONS).map(k => {
+    const cp = COUPONS[k];
+    const owned = u && u.coupons.includes(k), used = u && u.used.includes(k), lock = cp.vip && !(u && u.grade === 'vip');
+    const tag = !owned ? ' [미보유]' : used ? ' [사용완료]' : lock ? ' [VIP 전용]' : '';
+    return `<option value="${k}" ${o.coupon === k ? 'selected' : ''} ${!owned || used || lock ? 'disabled' : ''}>${cp.name}${tag}</option>`;
+  }).join('');
+  const gd = u ? '' : 'disabled';
+  return `
+  <h1 class="text-2xl font-black mb-4">장바구니</h1>
+  <div class="grid lg:grid-cols-3 gap-5">
+    <div class="lg:col-span-2 box">
+      <div class="flex items-center justify-between pb-3 border-b">
+        <label class="flex items-center gap-2 font-semibold text-sm cursor-pointer"><input type="checkbox" ${allSel ? 'checked' : ''} onchange="cartSelAll(this.checked)"> 전체 선택 (${cl.filter(l => l.sel).length}/${cl.length})</label>
+        <button class="btn btn-sm" onclick="cartDelSel()">선택 삭제</button>
+      </div>
+      ${rows}
+    </div>
+    <div class="box h-fit space-y-3 text-sm">
+      <div class="font-bold text-base">결제 예정 금액</div>
+      <div class="flex justify-between"><span>일시불 상품 합계</span><span>${won(c.subtotal)}</span></div>
+      <div class="flex justify-between"><span>다품목 결합 할인 (3%)</span><span id="sumBundle">${c.bundle ? '-' + won(c.bundle) : '-0원'}</span></div>
+      <div class="text-xs text-gray-500 -mt-2">서로 다른 모델 2종 이상 선택 시 적용 (현재 ${c.models}종)</div>
+      <div>
+        <div class="font-semibold mb-1">쿠폰</div>
+        <select id="selCoupon" class="inp" onchange="selectCoupon(this.value)" ${gd}><option value="">쿠폰 선택 안 함</option>${couponOpts}</select>
+        <div class="flex justify-between mt-1"><span>쿠폰 할인</span><span id="sumCoupon">${c.cAmt ? '-' + won(c.cAmt) : '-0원'}</span></div>
+      </div>
+      <div>
+        <div class="font-semibold mb-1">포인트 <span class="font-normal text-gray-500">(보유 ${u ? u.points.toLocaleString() : 0}P · 100P 단위)</span></div>
+        <div class="flex gap-2">
+          <input id="inPts" type="text" inputmode="numeric" class="inp" placeholder="사용할 포인트" value="${o.points || ''}" ${gd}>
+          <button class="btn btn-sm" onclick="applyPts()" ${gd}>적용</button>
+        </div>
+        <div class="flex justify-between mt-1"><span>포인트 사용</span><span id="sumPts">${o.points ? '-' + o.points.toLocaleString() + 'P' : '-0P'}</span></div>
+      </div>
+      ${u ? '' : '<div class="text-xs text-amber-700 bg-amber-50 rounded p-2">로그인 후 쿠폰·포인트를 사용할 수 있습니다.</div>'}
+      <div class="border-t pt-3 flex justify-between items-baseline"><b>최종 결제 금액</b><b id="sumPay" class="text-2xl" style="color:#A50034">${won(c.payable)}</b></div>
+      ${c.sub.length ? `<div class="flex justify-between"><span>구독 월 요금 합계</span><b id="sumMonthly" style="color:#A50034">월 ${won(c.monthlySum)}</b></div>` : ''}
+      <button class="btn btn-p w-full py-3" id="btnOrder" onclick="toCheckout()">주문하기</button>
+    </div>
+  </div>`;
+}
+function cartSel(id, v) { const l = cart().find(x => x.id === id); if (l) l.sel = v; save(); render(); }
+function cartSelAll(v) { cart().forEach(l => l.sel = v); save(); render(); }
+function cartDel(id) { S.carts[S.session || 'guest'] = cart().filter(l => l.id !== id); save(); render(); toast('상품을 삭제했습니다.', 'info'); }
+function cartDelSel() {
+  const n = cart().filter(l => l.sel).length;
+  if (!n) { toast('삭제할 상품을 선택해 주세요.', 'warn'); return; }
+  S.carts[S.session || 'guest'] = cart().filter(l => !l.sel); save(); render(); toast(n + '개 상품을 삭제했습니다.', 'info');
+}
+function cartSet(id, val) {
+  const l = cart().find(x => x.id === id); if (!l) return;
+  const r = validateQty(String(val), P(l.pid));
+  if (!r.ok) { toast(r.msg, 'err'); render(); return; }
+  l.qty = r.n; save(); render();
+}
+function selectCoupon(v) {
+  if (!U()) { toast('로그인 후 쿠폰을 사용할 수 있습니다.', 'err'); render(); return; }
+  if (v) {
+    const c = calc(v, 0);
+    if (c.cErr) { toast(c.cErr, 'err'); render(); return; }
+  }
+  optv().coupon = v; save(); render();
+  if (v) toast('쿠폰이 적용되었습니다.', 'ok');
+}
+function applyPts() {
+  const u = U();
+  if (!u) { toast('로그인 후 포인트를 사용할 수 있습니다.', 'err'); return; }
+  const raw = $('#inPts').value.trim();
+  const o = optv();
+  const c = calc(o.coupon, 0);
+  const hold = u.points;
+  const err = m => { toast(m, 'err'); };
+  if (raw === '') { o.points = 0; save(); render(); toast('포인트 사용이 해제되었습니다.', 'info'); return; }
+  const n = Number(raw);
+  if (!/^-?\d+$/.test(raw) || isNaN(n)) return err('포인트는 숫자로만 입력할 수 있습니다.');
+  if (n < 0) return err('포인트는 음수로 입력할 수 없습니다.');
+  if (n % 100 !== 0) return err('포인트는 100P 단위로만 사용할 수 있습니다.');
+  if (n > hold) return err('보유 포인트(' + hold.toLocaleString() + 'P)를 초과하여 사용할 수 없습니다.');
+  if (n > 0 && !c.lump.length) return err('일시불 상품이 선택되지 않아 포인트를 사용할 수 없습니다.');
+  if (n > c.afterC) return err('포인트는 결제 금액(' + won(c.afterC) + ')을 초과하여 사용할 수 없습니다.');
+  o.points = n; save(); render();
+  toast(n ? n.toLocaleString() + 'P가 적용되었습니다.' : '포인트 사용이 해제되었습니다.', 'ok');
+}
+function toCheckout() {
+  const L = cart().filter(l => l.sel);
+  if (!L.length) { toast('주문할 상품을 선택해 주세요.', 'warn'); return; }
+  if (!U()) { needLogin('checkout'); return; }
+  go('checkout');
+}
+
+/* =====================================================
+   REQ-002 주문서 / 결제 시뮬레이션 / 영수증
+===================================================== */
+function viewCheckout() {
+  const o = optv();
+  const c = calc(o.coupon, o.points);
+  if (!c.L.length) { V.view = 'cart'; toast('주문할 상품이 선택되지 않았습니다.', 'warn'); return viewCart(); }
+  const f = V.form;
+  const items = c.L.map(l => {
+    const p = P(l.pid);
+    return `<div class="flex gap-3 py-3 border-b text-sm"><div class="text-3xl">${p.icon}</div><div class="flex-1"><div class="font-bold">${esc(p.name)}</div><div class="text-xs text-gray-500">${lineDesc(l)}${l.type === 'lump' ? ' · ' + l.qty + '개' : ''}</div></div>
+    <div class="font-bold text-right">${l.type === 'lump' ? won(p.price * l.qty) : '<span style="color:#A50034">월 ' + won(lineUnit(l)) + '</span>'}</div></div>`;
+  }).join('');
+  const radio = (name, val, cur, label, setter) => `<label class="flex items-center gap-2 border rounded-lg p-3 text-sm cursor-pointer ${cur === val ? 'bg-red-50' : ''}" style="${cur === val ? 'border-color:#A50034' : ''}"><input type="radio" name="${name}" ${cur === val ? 'checked' : ''} onchange="${setter}">${label}</label>`;
+  return `
+  <h1 class="text-2xl font-black mb-4">주문서</h1>
+  <div class="grid lg:grid-cols-3 gap-5">
+    <div class="lg:col-span-2 space-y-5">
+      <div class="box"><div class="font-bold mb-2">주문 상품</div>${items}</div>
+      <div class="box space-y-3">
+        <div class="font-bold">배송 · 수령 정보</div>
+        <div><label class="text-sm font-semibold">수령인 이름 <span class="text-gray-400 font-normal">(2~10자)</span></label>
+          <input id="fName" class="inp mt-1" placeholder="수령인 이름" value="${esc(f.name)}" oninput="V.form.name=this.value"></div>
+        <div><label class="text-sm font-semibold">연락처 <span class="text-gray-400 font-normal">(숫자만)</span></label>
+          <input id="fPhone" class="inp mt-1" inputmode="numeric" placeholder="01012345678" value="${esc(f.phone)}" oninput="phoneIn(this)"></div>
+        <div><label class="text-sm font-semibold">배송지 주소</label>
+          <input id="fAddr" class="inp mt-1" placeholder="배송지 주소를 입력해 주세요" value="${esc(f.addr)}" oninput="V.form.addr=this.value"></div>
+        ${c.large ? `<label class="flex items-start gap-2 bg-red-50 border rounded-lg p-3 text-sm cursor-pointer" style="border-color:#A50034"><input id="fLadder" type="checkbox" class="mt-0.5" ${f.ladder ? 'checked' : ''} onchange="V.form.ladder=this.checked"><span><b>사다리차/엘리베이터 진입 공간 확인 완료</b><br><span class="text-xs text-gray-600">대형가전이 포함되어 있어 설치 공간 확인이 필요합니다. (필수)</span></span></label>` : ''}
+      </div>
+      <div class="box space-y-3">
+        <div class="font-bold">결제 수단 / 심사 (시뮬레이션)</div>
+        ${c.lump.length ? `<div><div class="text-sm font-semibold mb-1">일시불 결제 수단</div><div class="grid gap-2">
+          ${radio('pm', 'ok', f.pay, '일반 카드결제 (정상 승인)', "V.form.pay='ok';render()")}
+          ${radio('pm', 'fail', f.pay, '한도초과 카드 (결제 실패 테스트용)', "V.form.pay='fail';render()")}</div></div>` : ''}
+        ${c.sub.length ? `<div><div class="text-sm font-semibold mb-1">구독 심사 옵션</div><div class="grid gap-2">
+          ${radio('rv', 'ok', f.review, '정상 신용심사', "V.form.review='ok';render()")}
+          ${radio('rv', 'reject', f.review, '신용등급 미달 (심사 거절 테스트용)', "V.form.review='reject';render()")}</div></div>` : ''}
+      </div>
+    </div>
+    <div class="box h-fit space-y-2 text-sm">
+      <div class="font-bold text-base mb-1">결제 정보</div>
+      <div class="flex justify-between"><span>일시불 상품 합계</span><span>${won(c.subtotal)}</span></div>
+      <div class="flex justify-between"><span>다품목 결합 할인</span><span>${c.bundle ? '-' + won(c.bundle) : '-0원'}</span></div>
+      <div class="flex justify-between"><span>쿠폰 할인${o.coupon ? ' (' + COUPONS[o.coupon].name.split(' (')[0] + ')' : ''}</span><span>${c.cAmt ? '-' + won(c.cAmt) : '-0원'}</span></div>
+      <div class="flex justify-between"><span>포인트 사용</span><span>${o.points ? '-' + o.points.toLocaleString() + 'P' : '-0P'}</span></div>
+      <div class="border-t pt-3 flex justify-between items-baseline"><b>최종 결제 금액</b><b id="payAmt" class="text-2xl" style="color:#A50034">${won(c.payable)}</b></div>
+      ${c.sub.length ? `<div class="flex justify-between"><span>구독 월 요금 합계</span><b style="color:#A50034">월 ${won(c.monthlySum)}</b></div>` : ''}
+      <button id="btnPay" class="btn btn-p w-full py-3 mt-2" onclick="pay()">${c.lump.length ? '결제하기' : '구독 신청하기'}</button>
+      <button class="btn w-full" onclick="go('cart')">← 장바구니로</button>
+    </div>
+  </div>`;
+}
+function phoneIn(el) {
+  const v = el.value;
+  if (/\D/.test(v)) { el.value = v.replace(/\D/g, ''); toast('연락처는 숫자만 입력할 수 있습니다.', 'err'); }
+  V.form.phone = el.value;
+}
+function pay() {
+  const u = U();
+  if (!u) { needLogin('checkout'); return; }
+  const o = optv();
+  const c = calc(o.coupon, o.points);
+  if (!c.L.length) { toast('주문할 상품이 없습니다.', 'err'); return; }
+  const name = $('#fName').value.trim(), phone = $('#fPhone').value.trim(), addr = $('#fAddr').value.trim();
+  V.form.name = $('#fName').value; V.form.phone = phone; V.form.addr = $('#fAddr').value;
+  const nl = [...name].length;
+  if (nl < 2 || nl > 10) { toast('수령인 이름은 2자 이상 10자 이하로 입력해 주세요.', 'err'); $('#fName').focus(); return; }
+  if (!phone) { toast('연락처를 입력해 주세요.', 'err'); $('#fPhone').focus(); return; }
+  if (!/^\d+$/.test(phone)) { toast('연락처는 숫자만 입력할 수 있습니다.', 'err'); $('#fPhone').focus(); return; }
+  if (!addr) { toast('배송지 주소를 입력해 주세요.', 'err'); $('#fAddr').focus(); return; }
+  if (c.large && !V.form.ladder) { toast("'사다리차/엘리베이터 진입 공간 확인 완료'에 체크해야 결제할 수 있습니다.", 'err'); return; }
+  for (const l of c.lump) {
+    const dm = validateDate(l.date);
+    if (dm) { toast(P(l.pid).name + ': 희망 설치일이 유효하지 않습니다. 장바구니에서 다시 담아 주세요. (' + dm + ')', 'err'); return; }
+  }
+  const need = {};
+  c.L.forEach(l => { need[l.pid] = (need[l.pid] || 0) + l.qty; });
+  for (const pid in need) {
+    const p = P(pid);
+    if (p.stock <= 0) { toast(`${p.name}: 일시품절되어 주문할 수 없습니다.`, 'err'); return; }
+    if (p.stock < need[pid]) { toast(`${p.name}: 재고가 부족합니다. (요청 ${need[pid]}개 / 재고 ${p.stock}개)`, 'err'); return; }
+  }
+  if (c.sub.length && V.form.review === 'reject') {
+    modal('구독 심사 거절', '신용/심사 기준 미달로 구독 신청이 거절되었습니다', 'err');
+    return;
+  }
+  if (c.lump.length && V.form.pay === 'fail') {
+    modal('결제 실패', '결제 승인에 실패했습니다(한도 초과)', 'err');
+    return;
+  }
+  const id = 'ORD-' + dstr(0).replace(/-/g, '') + '-' + String(S.seq++).padStart(4, '0');
+  const items = c.L.map(l => {
+    const p = P(l.pid);
+    return { pid: p.id, name: p.name, model: p.model, icon: p.icon, large: p.large, type: l.type, qty: l.qty, date: l.date || '', term: l.term || 0, care: l.care || 0, card: !!l.card, unit: lineUnit(l) };
+  });
+  const order = {
+    id, userId: u.id, created: new Date().toISOString(), items,
+    name, phone, addr, ladder: !!V.form.ladder,
+    subtotal: c.subtotal, bundle: c.bundle, couponKey: c.cAmt > 0 ? o.coupon : '', couponAmt: c.cAmt, points: o.points,
+    payable: c.payable, monthlySum: c.monthlySum, status: '결제완료', returnReq: false
+  };
+  c.L.forEach(l => { P(l.pid).stock -= l.qty; });
+  if (order.couponKey) u.used.push(order.couponKey);
+  u.points -= o.points;
+  S.orders.push(order);
+  S.carts[u.id] = cart().filter(l => !l.sel);
+  S.opts[u.id] = { coupon: '', points: 0 };
+  V.form = defForm();
+  V.receipt = id;
+  save();
+  go('receipt');
+  toast('주문이 완료되었습니다.', 'ok');
+}
+function viewReceipt() {
+  const o = S.orders.find(x => x.id === V.receipt);
+  if (!o) { V.view = 'home'; return viewHome(); }
+  const dates = o.items.filter(i => i.type === 'lump').map(i => `<li>${i.icon} ${esc(i.name)} ${i.qty}개 — 설치 희망일 <b>${i.date}</b></li>`).join('');
+  const subs = o.items.filter(i => i.type === 'sub').map(i => `<li>${i.icon} ${esc(i.name)} — 구독 ${i.term}년 · 월 ${won(i.unit)}</li>`).join('');
+  return `<div class="max-w-xl mx-auto">
+    <div class="text-center mb-5"><div class="text-5xl mb-2">🎉</div><h1 class="text-2xl font-black">주문이 완료되었습니다</h1><p class="text-sm text-gray-500 mt-1">주문 내역은 마이페이지에서 조회할 수 있습니다.</p></div>
+    <div class="box space-y-3 text-sm" id="receipt">
+      <div class="flex justify-between"><span class="text-gray-500">주문번호</span><b id="rcptNo">${o.id}</b></div>
+      <div class="flex justify-between"><span class="text-gray-500">주문일시</span><span>${new Date(o.created).toLocaleString('ko-KR')}</span></div>
+      <div class="flex justify-between"><span class="text-gray-500">수령인</span><span>${esc(o.name)} (${esc(o.phone)})</span></div>
+      <div class="flex justify-between gap-4"><span class="text-gray-500 shrink-0">배송지</span><span class="text-right">${esc(o.addr)}</span></div>
+      <div class="border-t pt-3"><div class="text-gray-500 mb-1">설치 희망일 요약</div><ul class="space-y-1 list-none">${dates}${subs}</ul></div>
+      <div class="border-t pt-3 flex justify-between items-baseline"><b>결제 금액</b><b id="rcptPay" class="text-2xl" style="color:#A50034">${won(o.payable)}</b></div>
+      ${o.monthlySum ? `<div class="flex justify-between"><span>구독 월 요금</span><b style="color:#A50034">월 ${won(o.monthlySum)}</b></div>` : ''}
+      <div class="text-xs text-gray-500">할인: 결합 ${won(o.bundle)} · 쿠폰 ${won(o.couponAmt)} · 포인트 ${o.points.toLocaleString()}P</div>
+    </div>
+    <div class="grid grid-cols-2 gap-2 mt-4"><button class="btn" onclick="go('home')">쇼핑 계속하기</button><button class="btn btn-p" onclick="go('my')">마이페이지에서 보기</button></div>
+  </div>`;
+}
+
+/* =====================================================
+   REQ-005 마이페이지
+===================================================== */
+function viewMy() {
+  const u = U();
+  const orders = S.orders.filter(o => o.userId === u.id).slice().reverse();
+  const coupons = u.coupons.length ? u.coupons.map(k => {
+    const cp = COUPONS[k]; const used = u.used.includes(k); const lock = cp.vip && u.grade !== 'vip';
+    return `<div class="flex justify-between items-center gap-2 text-sm py-1"><span>${cp.name}</span><span class="st shrink-0 ${used ? 'bg-gray-200 text-gray-600' : lock ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'}">${used ? '사용완료' : lock ? 'VIP 전용' : '사용가능'}</span></div>`;
+  }).join('') : '<div class="text-sm text-gray-500">보유한 쿠폰이 없습니다.</div>';
+  return `
+  <h1 class="text-2xl font-black mb-4">마이페이지</h1>
+  <div class="grid md:grid-cols-3 gap-4 mb-4">
+    <div class="box"><div class="text-xs text-gray-500">회원 정보</div><div class="text-lg font-black mt-1">${esc(u.name)} <span class="text-sm font-normal text-gray-500">(${esc(u.id)})</span></div><div class="mt-1 text-sm">등급 <b id="myGrade" style="color:#A50034">${u.role === 'admin' ? '관리자' : u.grade === 'vip' ? 'VIP 회원' : '일반 회원'}</b></div></div>
+    <div class="box"><div class="text-xs text-gray-500">보유 포인트</div><div class="text-2xl font-black mt-1" id="myPoints">${u.points.toLocaleString()}P</div></div>
+    <div class="box"><div class="text-xs text-gray-500 mb-1">보유 쿠폰</div>${coupons}</div>
+  </div>
+  <div class="box mb-6">
+    <div class="font-bold mb-3">비밀번호 변경</div>
+    <form class="grid md:grid-cols-4 gap-2 items-start" onsubmit="return changePw(event)" novalidate>
+      <input id="cpCur" type="password" class="inp" placeholder="현재 비밀번호" autocomplete="current-password">
+      <input id="cpNew" type="password" class="inp" placeholder="새 비밀번호" autocomplete="new-password">
+      <input id="cpNew2" type="password" class="inp" placeholder="새 비밀번호 확인" autocomplete="new-password">
+      <button class="btn btn-d" id="btnChangePw" type="submit">변경</button>
+    </form>
+    <div class="hint">8자 이상, 영문 + 숫자 + 특수문자 각 1개 이상 포함</div>
+  </div>
+  <h2 class="text-lg font-bold mb-3">주문 내역 <span class="text-sm font-normal text-gray-500">(${orders.length}건)</span></h2>
+  ${orders.length ? orders.map(orderCard).join('') : '<div class="box text-center py-14 text-gray-500">주문 내역이 없습니다.</div>'}`;
+}
+function changePw(e) {
+  e.preventDefault();
+  const u = U(); if (!u) return false;
+  const cur = $('#cpCur').value, n1 = $('#cpNew').value, n2 = $('#cpNew2').value;
+  if (!cur) { toast('현재 비밀번호를 입력해 주세요.', 'err'); return false; }
+  if (cur !== u.pw) { toast('현재 비밀번호가 일치하지 않습니다.', 'err'); return false; }
+  const m = validatePw(n1);
+  if (m) { toast('새 ' + m, 'err'); return false; }
+  if (n1 === cur) { toast('새 비밀번호는 현재 비밀번호와 달라야 합니다.', 'err'); return false; }
+  if (n1 !== n2) { toast('새 비밀번호 확인이 일치하지 않습니다.', 'err'); return false; }
+  u.pw = n1; save();
+  ['#cpCur', '#cpNew', '#cpNew2'].forEach(s => $(s).value = '');
+  toast('비밀번호가 변경되었습니다.', 'ok');
+  return false;
+}
+function orderCard(o) {
+  const final = FINAL.includes(o.status);
+  const idx = STATUSES.indexOf(o.status);
+  const steps = final ? '' : `<div class="flex items-center gap-1 text-xs mt-2 flex-wrap">${STATUSES.map((s, i) => `<span class="st ${i <= idx ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-400'}">${s}</span>${i < 3 ? '<span class="text-gray-300">›</span>' : ''}`).join('')}</div>`;
+  const canCancel = o.status === '결제완료' || o.status === '설치일정확정';
+  const canReturn = o.status === '배송·설치중' || o.status === '설치완료';
+  const items = o.items.map(i => `<div class="flex justify-between gap-2 text-sm py-1"><span>${i.icon} ${esc(i.name)} <span class="text-xs text-gray-500">${i.type === 'lump' ? '일시불 · ' + i.qty + '개 · 설치 ' + i.date : '구독 · ' + i.term + '년 · 케어십 ' + i.care + '개월' + (i.card ? ' · 제휴카드' : '')}</span></span><span class="font-semibold whitespace-nowrap">${i.type === 'lump' ? won(i.unit * i.qty) : '월 ' + won(i.unit)}</span></div>`).join('');
+  return `<div class="box mb-4" data-order="${o.id}">
+    <div class="flex flex-wrap justify-between items-start gap-2">
+      <div><div class="font-bold">${o.id}</div><div class="text-xs text-gray-500">${new Date(o.created).toLocaleString('ko-KR')} · 수령인 ${esc(o.name)} · ${esc(o.addr)}</div></div>
+      <span class="st ${statusClass(o.status)}" data-status>${o.status}</span>
+    </div>
+    ${steps}
+    <div class="mt-3 border-t pt-2">${items}</div>
+    <div class="mt-2 text-sm bg-gray-50 rounded-lg p-3 space-y-1">
+      <div class="font-semibold">적용된 할인 내역</div>
+      <div class="flex justify-between"><span>일시불 합계</span><span>${won(o.subtotal)}</span></div>
+      <div class="flex justify-between"><span>다품목 결합 할인</span><span>${o.bundle ? '-' + won(o.bundle) : '없음'}</span></div>
+      <div class="flex justify-between gap-2"><span>쿠폰${o.couponKey ? ' (' + COUPONS[o.couponKey].name.split(' (')[0] + ')' : ''}</span><span>${o.couponAmt ? '-' + won(o.couponAmt) : '없음'}</span></div>
+      <div class="flex justify-between"><span>포인트 사용</span><span>${o.points ? '-' + o.points.toLocaleString() + 'P' : '없음'}</span></div>
+      <div class="flex justify-between border-t pt-1 font-bold"><span>결제 금액</span><span style="color:#A50034">${won(o.payable)}${o.monthlySum ? ' + 월 ' + won(o.monthlySum) : ''}</span></div>
+    </div>
+    <div class="mt-3 flex gap-2 justify-end">
+      ${canCancel ? `<button class="btn btn-sm" data-act="cancel" onclick="cancelOrder('${o.id}')">주문 취소</button>` : ''}
+      ${canReturn ? (o.returnReq ? `<button class="btn btn-sm" disabled>반품 신청 접수됨 (승인 대기)</button>` : `<button class="btn btn-sm btn-d" data-act="return" onclick="returnOrder('${o.id}')">반품 신청</button>`) : ''}
+    </div></div>`;
+}
+function restoreOrder(o) {
+  o.items.forEach(i => { const p = P(i.pid); if (p) p.stock += i.qty; });
+  const u = S.users.find(x => x.id === o.userId);
+  if (u) { if (o.couponKey) u.used = u.used.filter(k => k !== o.couponKey); u.points += o.points; }
+}
+function cancelOrder(id) {
+  const o = S.orders.find(x => x.id === id);
+  if (!o || o.userId !== S.session) return;
+  if (!(o.status === '결제완료' || o.status === '설치일정확정')) { toast('현재 상태에서는 주문을 취소할 수 없습니다.', 'err'); render(); return; }
+  restoreOrder(o); o.status = '취소완료';
+  save(); render();
+  toast('주문이 취소되었습니다. 재고·쿠폰·포인트가 복구되었습니다.', 'ok');
+}
+function returnOrder(id) {
+  const o = S.orders.find(x => x.id === id);
+  if (!o || o.userId !== S.session) return;
+  if (!(o.status === '배송·설치중' || o.status === '설치완료')) { toast('현재 상태에서는 반품을 신청할 수 없습니다.', 'err'); render(); return; }
+  o.returnReq = true; save(); render();
+  toast('반품 신청이 접수되었습니다. 관리자 승인 후 처리됩니다.', 'ok');
+}
+
+/* =====================================================
+   관리자 페이지
+===================================================== */
+function viewAdmin() {
+  const tabs = [['orders', '전체 주문 관리'], ['stock', '상품 재고 관리'], ['members', '회원 등급 관리']];
+  let body = '';
+  if (V.adminTab === 'orders') {
+    const orders = S.orders.slice().reverse();
+    body = `<div class="tbl-wrap"><table class="tb"><thead><tr><th>주문번호</th><th>회원</th><th>상품</th><th>결제금액</th><th>상태 변경</th><th>반품</th></tr></thead><tbody>
+    ${orders.length ? orders.map(o => {
+      const fin = FINAL.includes(o.status);
+      const un = S.users.find(x => x.id === o.userId);
+      return `<tr data-order="${o.id}"><td class="whitespace-nowrap">${o.id}</td><td>${esc(un ? un.name : o.userId)}<div class="text-xs text-gray-500">${esc(o.userId)}</div></td>
+        <td>${o.items.map(i => esc(i.name) + (i.type === 'lump' ? ' ×' + i.qty : ' (구독)')).join('<br>')}</td>
+        <td class="whitespace-nowrap">${won(o.payable)}</td>
+        <td>${fin ? `<span class="st ${statusClass(o.status)}">${o.status}</span>` : `<select class="inp" style="padding:5px" onchange="adminStatus('${o.id}',this.value)">${STATUSES.map(s => `<option ${o.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select>`}</td>
+        <td>${o.returnReq && !fin ? `<span class="st bg-red-100 text-red-800 mb-1">반품 신청됨</span><br><button class="btn btn-sm btn-p" data-act="approve" onclick="adminApproveReturn('${o.id}')">반품 승인 완료</button>` : fin && o.status === '반품완료' ? '<span class="text-xs text-gray-500">처리 완료</span>' : '-'}</td></tr>`;
+    }).join('') : '<tr><td colspan="6" class="text-gray-500 text-center py-6">생성된 주문이 없습니다.</td></tr>'}
+    </tbody></table></div>`;
+  } else if (V.adminTab === 'stock') {
+    body = `<div class="tbl-wrap"><table class="tb"><thead><tr><th>상품</th><th>현재 재고</th><th>재고 수정 (0 이상 정수)</th></tr></thead><tbody>
+    ${S.products.map(p => `<tr data-pid="${p.id}"><td>${p.icon} ${esc(p.name)}<div class="text-xs text-gray-500">${esc(p.model)}</div></td>
+      <td>${p.stock <= 0 ? '<span class="st bg-red-100 text-red-700">일시품절</span>' : p.stock + '개'}</td>
+      <td><div class="flex gap-1"><input id="st${p.id}" type="text" inputmode="numeric" class="inp" style="max-width:90px;padding:5px" value="${p.stock}"><button class="btn btn-sm btn-p" onclick="adminStock(${p.id})">저장</button></div></td></tr>`).join('')}
+    </tbody></table></div>`;
+  } else {
+    body = `<div class="tbl-wrap"><table class="tb"><thead><tr><th>아이디</th><th>이름</th><th>현재 등급</th><th>보유 포인트</th><th>등급 변경</th></tr></thead><tbody>
+    ${S.users.map(u => `<tr data-user="${u.id}"><td>${esc(u.id)}</td><td>${esc(u.name)}</td><td><span class="st ${u.role === 'admin' ? 'bg-gray-800 text-white' : u.grade === 'vip' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-700'}">${u.role === 'admin' ? '관리자' : u.grade === 'vip' ? 'VIP 회원' : '일반 회원'}</span></td><td>${u.points.toLocaleString()}P</td>
+      <td>${u.role === 'admin' ? '<span class="text-xs text-gray-500">변경 불가</span>' : `<button class="btn btn-sm" onclick="adminGrade('${u.id}','${u.grade === 'vip' ? 'normal' : 'vip'}')">${u.grade === 'vip' ? '일반 회원으로 전환' : 'VIP 회원으로 전환'}</button>`}</td></tr>`).join('')}
+    </tbody></table></div>`;
+  }
+  return `<h1 class="text-2xl font-black mb-4">🔧 관리자 페이지</h1>
+  <div class="flex gap-1 overflow-x-auto border-b border-gray-200 mb-4">${tabs.map(t => `<button class="tab ${V.adminTab === t[0] ? 'tab-on' : ''}" onclick="V.adminTab='${t[0]}';render()">${t[1]}</button>`).join('')}</div>
+  <div class="box">${body}</div>`;
+}
+function isAdmin() { const u = U(); return !!(u && u.role === 'admin'); }
+function adminStatus(id, val) {
+  if (!isAdmin()) { toast('관리자만 사용할 수 있습니다.', 'err'); return; }
+  const o = S.orders.find(x => x.id === id);
+  if (!o || !STATUSES.includes(val) || FINAL.includes(o.status)) return;
+  o.status = val;
+  if (val === '결제완료' || val === '설치일정확정') o.returnReq = false;
+  save(); render();
+  toast(id + ' 상태가 [' + val + ']로 변경되었습니다.', 'ok');
+}
+function adminApproveReturn(id) {
+  if (!isAdmin()) { toast('관리자만 사용할 수 있습니다.', 'err'); return; }
+  const o = S.orders.find(x => x.id === id);
+  if (!o || !o.returnReq || FINAL.includes(o.status)) { toast('승인할 수 있는 반품 신청이 아닙니다.', 'err'); return; }
+  restoreOrder(o); o.status = '반품완료'; o.returnReq = false;
+  save(); render();
+  toast(id + ' 반품이 승인되어 재고·쿠폰·포인트가 복구되었습니다.', 'ok');
+}
+function adminStock(pid) {
+  if (!isAdmin()) { toast('관리자만 사용할 수 있습니다.', 'err'); return; }
+  const el = $('#st' + pid); const raw = el.value.trim();
+  if (raw === '') { toast('재고 수량을 입력해 주세요.', 'err'); return; }
+  const n = Number(raw);
+  if (!/^-?\d+$/.test(raw) || isNaN(n)) { toast('재고는 정수로만 입력할 수 있습니다.', 'err'); return; }
+  if (n < 0) { toast('재고는 음수로 입력할 수 없습니다.', 'err'); el.value = P(pid).stock; return; }
+  P(pid).stock = n; save(); render();
+  toast(P(pid).name + ' 재고가 ' + n + '개로 수정되었습니다.' + (n === 0 ? ' (일시품절 처리)' : ''), 'ok');
+}
+function adminGrade(uid, g) {
+  if (!isAdmin()) { toast('관리자만 사용할 수 있습니다.', 'err'); return; }
+  const u = S.users.find(x => x.id === uid);
+  if (!u || u.role === 'admin') return;
+  u.grade = g;
+  if (g === 'vip' && !u.coupons.includes('vip')) u.coupons.push('vip');
+  save(); render();
+  toast(u.name + '(' + u.id + ') 회원이 ' + (g === 'vip' ? 'VIP 회원' : '일반 회원') + '으로 전환되었습니다.', 'ok');
+}
+
+/* 초기 렌더 */
+render();
+</script>
+</body>
+</html>
